@@ -59,6 +59,7 @@ namespace Tbot.Workers {
 					interval = RandomizeHelper.CalcRandomInterval(IntervalType.SomeSeconds);
 
 				DateTime newTime = time.AddMilliseconds(interval);
+				ChangeWorkerDueTime(TimeSpan.FromMilliseconds(interval));
 				ChangeWorkerPeriod(TimeSpan.FromMilliseconds(interval));
 				DoLog(LogLevel.Information, $"Next check at {newTime.ToString()}");
 				await _tbotOgameBridge.CheckCelestials();
@@ -68,6 +69,7 @@ namespace Tbot.Workers {
 				DateTime time = await _tbotOgameBridge.GetDateTime();
 				long interval = RandomizeHelper.CalcRandomInterval(IntervalType.AFewSeconds);
 				DateTime newTime = time.AddMilliseconds(interval);
+				ChangeWorkerDueTime(TimeSpan.FromMilliseconds(interval));
 				ChangeWorkerPeriod(TimeSpan.FromMilliseconds(interval));
 				DoLog(LogLevel.Information, $"Next check at {newTime.ToString()}");
 				await _tbotOgameBridge.CheckCelestials();
@@ -145,6 +147,7 @@ namespace Tbot.Workers {
 				DateTime time = await _tbotOgameBridge.GetDateTime();
 				long interval = RandomizeHelper.CalcRandomInterval(IntervalType.SomeSeconds);
 				DateTime newTime = time.AddMilliseconds(interval);
+				ChangeWorkerDueTime(TimeSpan.FromMilliseconds(interval));
 				ChangeWorkerPeriod(TimeSpan.FromMilliseconds(interval));
 				DoLog(LogLevel.Warning, "Unable to handle attack at the moment: bot is still getting account info.");
 				DoLog(LogLevel.Information,  $"Next check at {newTime.ToString()}");

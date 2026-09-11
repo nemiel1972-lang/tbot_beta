@@ -347,6 +347,7 @@ namespace Tbot.Workers {
 					}
 
 					DateTime newTime = time.AddMilliseconds(interval);
+					ChangeWorkerDueTime(interval);
 					ChangeWorkerPeriod(interval);
 					_tbotInstance.log(LogLevel.Information, LogSender.Colonize, $"Next check at {newTime}");
 					await _tbotOgameBridge.CheckCelestials();
@@ -359,6 +360,7 @@ namespace Tbot.Workers {
 				if (interval <= 0)
 					interval = RandomizeHelper.CalcRandomInterval(IntervalType.SomeSeconds);
 				DateTime newTime = time.AddMilliseconds(interval);
+				ChangeWorkerDueTime(interval);
 				ChangeWorkerPeriod(interval);
 				_tbotInstance.log(LogLevel.Information, LogSender.Colonize, $"Next check at {newTime}");
 			} finally {

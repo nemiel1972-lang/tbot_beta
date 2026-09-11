@@ -1636,6 +1636,7 @@ namespace Tbot.Workers {
 						if (interval <= 0)
 							interval = RandomizeHelper.CalcRandomInterval(IntervalType.SomeSeconds);
 						var newTime = time.AddMilliseconds(interval);
+						ChangeWorkerDueTime(interval);
 						ChangeWorkerPeriod(interval);
 						_tbotInstance.log(LogLevel.Information, LogSender.AutoFarm,
 							$"Next autofarm check at {newTime.ToString()} (rechecking with any remaining fleet slots).");

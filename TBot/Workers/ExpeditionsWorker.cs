@@ -236,7 +236,9 @@ namespace Tbot.Workers {
 				_tbotInstance.UserData.researches = await _tbotOgameBridge.UpdateResearches();
 				if (_tbotInstance.UserData.researches.Astrophysics == 0) {
 					DoLog(LogLevel.Information, "Skipping: Astrophysics not yet researched!");
-					ChangeWorkerPeriod(RandomizeHelper.CalcRandomInterval(IntervalType.AboutHalfAnHour));
+					long skipInterval = RandomizeHelper.CalcRandomInterval(IntervalType.AboutHalfAnHour);
+					ChangeWorkerDueTime(skipInterval);
+					ChangeWorkerPeriod(skipInterval);
 					return;
 				}
 
@@ -464,12 +466,15 @@ namespace Tbot.Workers {
 							(int)_tbotInstance.InstanceSettings.Expeditions.MaxWaitNextRound));
 				}
 
+				ChangeWorkerDueTime(interval);
 				ChangeWorkerPeriod(interval);
 				DoLog(LogLevel.Information, $"Next expedition check at {DateTime.Now.AddMilliseconds(interval)}");
 			} catch (Exception e) {
 				DoLog(LogLevel.Warning, $"HandleExpeditions exception: {e.Message}");
 				DoLog(LogLevel.Debug, e.StackTrace);
-				ChangeWorkerPeriod(RandomizeHelper.CalcRandomInterval(IntervalType.AMinuteOrTwo));
+				long errorInterval = RandomizeHelper.CalcRandomInterval(IntervalType.AMinuteOrTwo);
+				ChangeWorkerDueTime(errorInterval);
+				ChangeWorkerPeriod(errorInterval);
 			} finally {
 				if (!_tbotInstance.UserData.isSleeping) {
 					if (stop)
@@ -486,7 +491,8 @@ namespace Tbot.Workers {
 								(int)_tbotInstance.InstanceSettings.Expeditions.CheckIntervalMin,
 								(int)_tbotInstance.InstanceSettings.Expeditions.CheckIntervalMax);
 						}
-						ChangeWorkerPeriod(interval);
+						ChangeWorkerDueTime(interval);
+					ChangeWorkerPeriod(interval);
 					}
 
 					await _tbotOgameBridge.CheckCelestials();

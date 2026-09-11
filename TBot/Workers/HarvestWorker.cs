@@ -361,6 +361,7 @@ namespace Tbot.Workers {
 			if (interval <= 0)
 				interval = RandomizeHelper.CalcRandomInterval(IntervalType.SomeSeconds);
 
+			ChangeWorkerDueTime(interval);
 			ChangeWorkerPeriod(interval);
 			var time = await _tbotOgameBridge.GetDateTime();
 			DoLog(LogLevel.Information, $"Next check at {time.AddMilliseconds(interval)}");

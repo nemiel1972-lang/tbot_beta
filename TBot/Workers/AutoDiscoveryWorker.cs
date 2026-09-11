@@ -789,6 +789,7 @@ namespace Tbot.Workers {
 				DateTime time = await _tbotOgameBridge.GetDateTime();
 				var nextTime = time.AddMilliseconds(interval);
 
+				ChangeWorkerDueTime(interval);
 				ChangeWorkerPeriod(interval);
 				DoLog(LogLevel.Information, $"Next AutoDiscovery check at {nextTime.ToString()}");
 				await _tbotOgameBridge.CheckCelestials();
@@ -809,6 +810,7 @@ namespace Tbot.Workers {
 					long intervalDelay = CalcNextIntervalFromDiscoveryFleetsOrFallback();
 					var newTimeDelay = timeDelay.AddMilliseconds(intervalDelay);
 
+					ChangeWorkerDueTime(intervalDelay);
 					ChangeWorkerPeriod(intervalDelay);
 					DoLog(LogLevel.Information, $"Next AutoDiscovery check at {newTimeDelay.ToString()}");
 				}
