@@ -194,7 +194,13 @@ namespace TBot.Ogame.Infrastructure {
 		}
 
 		private void dump_ogamedProcess_Log(bool isErr, string? payload) {
-			_logger.WriteLog(isErr ? LogLevel.Error : LogLevel.Information, LogSender.OGameD, $"[{_username}] \"{payload}\"");
+			// Vorher stand hier die E-Mail (_username, = Gameforge-Login) im Klartext im Log
+			// (WebUI-Log-Ansicht, Logdateien, ggf. Discord/Telegram-Weiterleitung). Player-Name und
+			// Universum sind auf dieser Infrastruktur-Ebene noch nicht als echte Werte bekannt (erst
+			// nach dem Login verfügbar, ogamed schreibt aber schon vorher Zeilen) - daher hier bewusst
+			// der feste Text "Player@Universe" statt einer echten (interpolierten) Variable, rein als
+			// Marker fürs Log-Format, ohne personenbezogene Daten.
+			_logger.WriteLog(isErr ? LogLevel.Error : LogLevel.Information, LogSender.OGameD, $"[Player@Universe] \"{payload}\"");
 		}
 
 		private void handle_ogamedProcess_Exited(object? sender, EventArgs e) {
