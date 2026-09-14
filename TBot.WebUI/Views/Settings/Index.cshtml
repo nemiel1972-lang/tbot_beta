@@ -12,7 +12,8 @@
         <ul class="list-files">
             @foreach (var file in Model.SettingsFiles)
             {
-                <li><button class="btn btn-light file-entry" data-filename="@file" onclick="onClickFileLink(this, '@file')">📄 @file</button></li>
+                bool isProfile = file.Contains("profiles/");
+                <li><button class="btn btn-light file-entry @(isProfile ? "profile-entry" : "")" data-filename="@file" onclick="onClickFileLink(this, '@file')">@(isProfile ? "🧩" : "📄") @file</button></li>
             }
         </ul>
     </div>

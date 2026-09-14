@@ -23,7 +23,7 @@ function getJson(jsonContents) {
 function openFileContents(fileName) {
 	showLoading();
 	selectedFile = fileName;
-	var url = `${_getFileUrl}?fileName=${fileName}`;
+	var url = `${_getFileUrl}?fileName=${encodeURIComponent(fileName)}`;
 	$.get(url, function (response) {
 		var content = getJson(response.data);
 		editor.load(content);

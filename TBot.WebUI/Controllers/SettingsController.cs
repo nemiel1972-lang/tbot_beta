@@ -28,10 +28,34 @@ namespace TBot.WebUI.Controllers {
 			}
 
 			foreach (var instance in settingsFile.Instances) {
-				fileNames.Add(instance.Settings);
+				string instanceSettingsRelPath = (string) instance.Settings;
+				fileNames.Add(instanceSettingsRelPath);
+				fileNames.AddRange(GetProfileFileNames(instanceSettingsRelPath));
 			}
 
 			return fileNames;
+		}
+
+		/// <summary>
+		/// Lists every *.json file found in the "profiles" folder next to a given instance's
+		/// settings file (relative to the app's base directory, same as instanceSettingsRelPath
+		/// itself) so they show up in the settings editor's file list exactly like the main
+		/// settings files - this covers both the sub-blocks referenced via "Load" in that
+		/// instance's settings (e.g. profiles/automine.json) and any full-overlay profile files
+		/// used by the existing /loadprofile Telegram command, since both kinds simply live as
+		/// *.json files under the same folder.
+		/// </summary>
+		private IEnumerable<string> GetProfileFileNames(string instanceSettingsRelPath) {
+			string instanceDirRel = Path.GetDirectoryName(instanceSettingsRelPath) ?? "";
+			string profilesDirAbs = Path.Combine(GetCurrentDirectory(), instanceDirRel, "profiles");
+
+			if (!Directory.Exists(profilesDirAbs))
+				yield break;
+
+			foreach (var absFile in Directory.GetFiles(profilesDirAbs, "*.json").OrderBy(f => f)) {
+				string relFile = Path.Combine(instanceDirRel, "profiles", Path.GetFileName(absFile));
+				yield return relFile.Replace('\\', '/');
+			}
 		}
 
 		[HttpGet]
