@@ -27,9 +27,9 @@ namespace Tbot.Common.Settings {
 
 		public static async Task<dynamic> GetSettings(string settingsPath) {
 			string file = await GetSettingsFileContents(settingsPath);
-			dynamic settings = JsonConvert.DeserializeObject<ExpandoObject>(file, new ExpandoObjectConverter());
-			settings = ConfigObject.FromExpando(JsonNetAdapter.Transform(settings));
-			return settings;
+			var settingsObj = JsonConvert.DeserializeObject<JObject>(file) ?? new JObject();
+			await ResolveLoadReferencesAsync(settingsObj, Path.GetDirectoryName(settingsPath));
+			return FinalizeSettings(settingsObj);
 		}
 
 		public static async Task<string> GetSettingsFileContents(string settingsPath) {
@@ -49,11 +49,20 @@ namespace Tbot.Common.Settings {
 			foreach (var overlay in overlaySettingsPath) {
 				overlayJson.Add(await GetSettingsFileContents(overlay));
 			}
-            return GetMergedSettingsFromContents(baseJson, overlayJson);
+			var mergedObj = MergeToJObject(baseJson, overlayJson);
+			await ResolveLoadReferencesAsync(mergedObj, Path.GetDirectoryName(baseSettingsPath));
+			return FinalizeSettings(mergedObj);
         }
 
         public static dynamic GetMergedSettingsFromContents(string baseJson, List<string> overlayJson) {
-            var baseObj = JsonConvert.DeserializeObject<JObject>(baseJson) ?? new JObject();
+			// Note: no settings file path is known here (contents only, e.g. in unit tests),
+			// so "Load" references are intentionally NOT resolved by this overload - only
+			// GetSettings/GetMergedSettings (which have a real file path) resolve them.
+            return FinalizeSettings(MergeToJObject(baseJson, overlayJson));
+        }
+
+		private static JObject MergeToJObject(string baseJson, List<string> overlayJson) {
+			var baseObj = JsonConvert.DeserializeObject<JObject>(baseJson) ?? new JObject();
 			var overlayObj = JsonConvert.DeserializeObject<JObject>(overlayJson.First()) ?? new JObject();
 			foreach (var overlay in overlayJson.Skip(1)) {
 				var nextOverlayObj = JsonConvert.DeserializeObject<JObject>(overlay) ?? new JObject();
@@ -63,16 +72,85 @@ namespace Tbot.Common.Settings {
 				});
 			}
 
-            baseObj.Merge(overlayObj, new JsonMergeSettings {
-                MergeArrayHandling = MergeArrayHandling.Replace,
-                MergeNullValueHandling = MergeNullValueHandling.Ignore
-            });
+			baseObj.Merge(overlayObj, new JsonMergeSettings {
+				MergeArrayHandling = MergeArrayHandling.Replace,
+				MergeNullValueHandling = MergeNullValueHandling.Ignore
+			});
 
-            string mergedJson = baseObj.ToString(Formatting.None);
-            dynamic settings = JsonConvert.DeserializeObject<ExpandoObject>(mergedJson, new ExpandoObjectConverter());
-            settings = ConfigObject.FromExpando(JsonNetAdapter.Transform(settings));
-            return settings;
-        }
+			return baseObj;
+		}
+
+		private static dynamic FinalizeSettings(JObject settingsObj) {
+			string json = settingsObj.ToString(Formatting.None);
+			dynamic settings = JsonConvert.DeserializeObject<ExpandoObject>(json, new ExpandoObjectConverter());
+			settings = ConfigObject.FromExpando(JsonNetAdapter.Transform(settings));
+			return settings;
+		}
+
+		/// <summary>
+		/// Walks the settings tree looking for objects that contain a "Load" property, e.g.:
+		///   "AutoMine": { "Active": true, "Load": "automine" }
+		/// For each one found, loads &lt;settingsDir&gt;/profiles/&lt;name&gt;.json (or an explicit
+		/// relative/absolute path/filename if "Load" contains a path separator or ".json"
+		/// extension), deep-merges its content into the block (the loaded file provides the
+		/// base values, any sibling keys already present alongside "Load" - such as "Active" -
+		/// override them), and removes the "Load" marker. This lets long, rarely-touched
+		/// per-worker detail settings (e.g. AutoMine Max-levels) live in their own small file
+		/// under profiles/, while the main settings file only keeps a short stub with the
+		/// worker's Active flag and a pointer to it. Resolution is recursive, so a loaded file
+		/// may itself contain further "Load" references (capped to avoid infinite loops from an
+		/// accidental circular reference).
+		/// </summary>
+		private static async Task ResolveLoadReferencesAsync(JObject obj, string baseDir, int depth = 0) {
+			if (obj == null || depth > 8)
+				return;
+
+			foreach (var prop in obj.Properties().ToList()) {
+				if (prop.Value is JObject childObj) {
+					if (childObj.TryGetValue("Load", StringComparison.OrdinalIgnoreCase, out var loadToken) && loadToken.Type == JTokenType.String) {
+						string reference = loadToken.Value<string>();
+						string loadedPath = ResolveLoadPath(baseDir, reference);
+						if (!File.Exists(loadedPath)) {
+							throw new Exception($"Setting '{prop.Name}': Load reference '{reference}' (resolved to '{loadedPath}') was not found.");
+						}
+
+						string loadedJson = await File.ReadAllTextAsync(loadedPath);
+						var loadedObj = JsonConvert.DeserializeObject<JObject>(loadedJson) ?? new JObject();
+						await ResolveLoadReferencesAsync(loadedObj, Path.GetDirectoryName(loadedPath), depth + 1);
+
+						var overlay = (JObject) childObj.DeepClone();
+						overlay.Remove("Load");
+						loadedObj.Merge(overlay, new JsonMergeSettings {
+							MergeArrayHandling = MergeArrayHandling.Replace,
+							MergeNullValueHandling = MergeNullValueHandling.Ignore
+						});
+
+						obj[prop.Name] = loadedObj;
+						await ResolveLoadReferencesAsync(loadedObj, baseDir, depth + 1);
+					} else {
+						await ResolveLoadReferencesAsync(childObj, baseDir, depth + 1);
+					}
+				} else if (prop.Value is JArray arr) {
+					foreach (var item in arr.OfType<JObject>().ToList()) {
+						await ResolveLoadReferencesAsync(item, baseDir, depth + 1);
+					}
+				}
+			}
+		}
+
+		/// <summary>
+		/// "automine" -> &lt;baseDir&gt;/profiles/automine.json (bare name: default profiles/ folder)
+		/// "sub/automine.json" or "/abs/path.json" -> resolved relative to baseDir, or used as-is if rooted.
+		/// </summary>
+		private static string ResolveLoadPath(string baseDir, string reference) {
+			string path = reference?.Trim() ?? "";
+			bool hasDirectory = path.Contains('/') || path.Contains('\\');
+			if (!path.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+				path += ".json";
+			if (Path.IsPathRooted(path))
+				return Path.GetFullPath(path);
+			return Path.GetFullPath(Path.Combine(baseDir ?? ".", hasDirectory ? path : Path.Combine("profiles", path)));
+		}
 
 		public static bool IsSettingSet(dynamic setting, string property) {
 			try {
