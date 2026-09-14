@@ -34,8 +34,5 @@ namespace Tbot.Services {
 		Task SendFeatureNotification(dynamic featureSettings, string fmt, NotificationKind kind = NotificationKind.Information);
 		Task<bool> TelegramSwitch(decimal speed, Celestial attacked = null, bool fromTelegram = false);
 		Task SleepNow(DateTime WakeUpTime);
-		Task ListProfiles();
-		Task LoadProfile(List<string> profileName);
-		Task ResetProfile();
 	}
 }
