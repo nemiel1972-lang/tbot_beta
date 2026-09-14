@@ -96,8 +96,8 @@ namespace Tbot.Workers.Brain {
 					Planet abaCelestial = await _tbotOgameBridge.UpdatePlanet(cel, UpdateTypes.Fast) as Planet;
 
 					var autoMineRole = AutoMineRoleHelper.GetRole(cel, _tbotInstance.InstanceSettings.Brain.AutoMine, _tbotInstance.UserData.celestials);
-					Buildings maxBuildings = AutoMineRoleHelper.GetMaxBuildings(_tbotInstance.InstanceSettings.Brain.AutoMine, autoMineRole);
-					Facilities maxFacilities = AutoMineRoleHelper.GetMaxFacilities(_tbotInstance.InstanceSettings.Brain.AutoMine, autoMineRole);
+					Buildings maxBuildings = AutoMineRoleHelper.GetMaxBuildings(cel, _tbotInstance.InstanceSettings.Brain.AutoMine, autoMineRole);
+					Facilities maxFacilities = AutoMineRoleHelper.GetMaxFacilities(cel, _tbotInstance.InstanceSettings.Brain.AutoMine, autoMineRole);
 
 					var nextMine = _calculationService.GetNextMineToBuild(cel as Planet, _tbotInstance.UserData.researches, _tbotInstance.UserData.serverData.Speed, maxBuildings.MetalMine, maxBuildings.CrystalMine, maxBuildings.DeuteriumSynthesizer, 1, _tbotInstance.UserData.userInfo.Class, _tbotInstance.UserData.staff.Geologist, _tbotInstance.UserData.staff.IsFull, true, int.MaxValue);
 					if (nextMine != Buildables.Null) {

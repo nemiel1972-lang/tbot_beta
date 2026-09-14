@@ -60,8 +60,8 @@ namespace Tbot.Workers.Brain {
 				var autoMineRole = AutoMineRoleHelper.GetRole(celestial, _tbotInstance.InstanceSettings.Brain.AutoMine, _tbotInstance.UserData.celestials);
 				if (celestial.Coordinate.Type == Celestials.Planet)
 					DoLog(LogLevel.Debug, $"AutoMine role for {celestial.ToString()}: {autoMineRole.ToString()}");
-				Buildings maxBuildings = AutoMineRoleHelper.GetMaxBuildings(_tbotInstance.InstanceSettings.Brain.AutoMine, autoMineRole);
-				Facilities maxFacilities = AutoMineRoleHelper.GetMaxFacilities(_tbotInstance.InstanceSettings.Brain.AutoMine, autoMineRole);
+				Buildings maxBuildings = AutoMineRoleHelper.GetMaxBuildings(celestial, _tbotInstance.InstanceSettings.Brain.AutoMine, autoMineRole);
+				Facilities maxFacilities = AutoMineRoleHelper.GetMaxFacilities(celestial, _tbotInstance.InstanceSettings.Brain.AutoMine, autoMineRole);
 				Facilities maxLunarFacilities = new() {
 					LunarBase = SettingsService.GetSetting<int>(_tbotInstance.InstanceSettings.Brain.AutoMine, "MaxLunarBase", 0),
 					RoboticsFactory = SettingsService.GetSetting<int>(_tbotInstance.InstanceSettings.Brain.AutoMine, "MaxLunarRoboticsFactory", 0),

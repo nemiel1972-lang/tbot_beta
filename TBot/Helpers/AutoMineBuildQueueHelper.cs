@@ -24,11 +24,13 @@ namespace Tbot.Helpers {
 	/// <summary>
 	/// Resolves the optional Brain.AutoMine.BuildQueue configuration: a fixed, ordered list of
 	/// "build this up to level X" steps per celestial, on top of the existing role-based
-	/// (Home/Colony/DeutPlanet) Max-level logic from AutoMineRoleHelper.
+	/// (Home/Colony) Max-level logic from AutoMineRoleHelper.
 	///
 	/// Resolution order (most specific wins):
-	///   1. Brain.AutoMine.BuildQueue.Celestials: exact-coordinate entry for this celestial.
-	///   2. Brain.AutoMine.BuildQueue.Home / .Colony / .DeutPlanet: role-based entry (role from
+	///   1. Brain.AutoMine.BuildQueue.Celestials: exact-coordinate entry for this celestial
+	///      (this is also how a single planet, e.g. a deuterium-focused one, gets its own
+	///      build order - there is no separate "DeutPlanet" role anymore).
+	///   2. Brain.AutoMine.BuildQueue.Home / .Colony: role-based entry (role from
 	///      AutoMineRoleHelper.GetRole).
 	///   3. Brain.AutoMine.BuildQueue.Mode as a bare default (empty queue) if nothing above matches.
 	///   4. If the whole Brain.AutoMine.BuildQueue block is missing, behaves exactly as before
@@ -64,13 +66,11 @@ namespace Tbot.Helpers {
 				} catch { }
 			}
 
-			// 2. Role-based block (Home/Colony/DeutPlanet).
+			// 2. Role-based block (Home/Colony - DeutPlanet is not a separate role anymore,
+			// it is just a normal colony; use BuildQueue.Celestials above for a per-planet
+			// override such as the former "DeutPlanet" build order).
 			var role = AutoMineRoleHelper.GetRole(celestial, autoMineSettings, allCelestials);
-			string roleBlockName = role switch {
-				AutoMinePlanetRole.Home => "Home",
-				AutoMinePlanetRole.DeutPlanet => "DeutPlanet",
-				_ => "Colony"
-			};
+			string roleBlockName = role == AutoMinePlanetRole.Home ? "Home" : "Colony";
 			if (SettingsService.IsSettingSet(buildQueueSettings, roleBlockName)) {
 				dynamic roleBlock = GetProperty(buildQueueSettings, roleBlockName);
 				AutoMineQueueMode roleMode = ParseMode(roleBlock, "Mode", globalDefaultMode);
@@ -125,7 +125,6 @@ namespace Tbot.Helpers {
 				case "Mode": return block.Mode;
 				case "Home": return block.Home;
 				case "Colony": return block.Colony;
-				case "DeutPlanet": return block.DeutPlanet;
 				default: return null;
 			}
 		}
