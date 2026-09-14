@@ -57,31 +57,17 @@ namespace Tbot.Workers.Brain {
 
 		protected override async Task Execute() {
 			try {
-				Buildings maxBuildings = new() {
-					MetalMine = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxMetalMine,
-					CrystalMine = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxCrystalMine,
-					DeuteriumSynthesizer = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxDeuteriumSynthetizer,
-					SolarPlant = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxSolarPlant,
-					FusionReactor = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxFusionReactor,
-					MetalStorage = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxMetalStorage,
-					CrystalStorage = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxCrystalStorage,
-					DeuteriumTank = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxDeuteriumTank
-				};
-				Facilities maxFacilities = new() {
-					RoboticsFactory = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxRoboticsFactory,
-					Shipyard = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxShipyard,
-					ResearchLab = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxResearchLab,
-					MissileSilo = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxMissileSilo,
-					NaniteFactory = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxNaniteFactory,
-					Terraformer = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxTerraformer,
-					SpaceDock = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxSpaceDock
-				};
+				var autoMineRole = AutoMineRoleHelper.GetRole(celestial, _tbotInstance.InstanceSettings.Brain.AutoMine, _tbotInstance.UserData.celestials);
+				if (celestial.Coordinate.Type == Celestials.Planet)
+					DoLog(LogLevel.Debug, $"AutoMine role for {celestial.ToString()}: {autoMineRole.ToString()}");
+				Buildings maxBuildings = AutoMineRoleHelper.GetMaxBuildings(_tbotInstance.InstanceSettings.Brain.AutoMine, autoMineRole);
+				Facilities maxFacilities = AutoMineRoleHelper.GetMaxFacilities(_tbotInstance.InstanceSettings.Brain.AutoMine, autoMineRole);
 				Facilities maxLunarFacilities = new() {
-					LunarBase = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxLunarBase,
-					RoboticsFactory = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxLunarRoboticsFactory,
-					SensorPhalanx = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxSensorPhalanx,
-					JumpGate = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxJumpGate,
-					Shipyard = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxLunarShipyard
+					LunarBase = SettingsService.GetSetting<int>(_tbotInstance.InstanceSettings.Brain.AutoMine, "MaxLunarBase", 0),
+					RoboticsFactory = SettingsService.GetSetting<int>(_tbotInstance.InstanceSettings.Brain.AutoMine, "MaxLunarRoboticsFactory", 0),
+					SensorPhalanx = SettingsService.GetSetting<int>(_tbotInstance.InstanceSettings.Brain.AutoMine, "MaxSensorPhalanx", 0),
+					JumpGate = SettingsService.GetSetting<int>(_tbotInstance.InstanceSettings.Brain.AutoMine, "MaxJumpGate", 0),
+					Shipyard = SettingsService.GetSetting<int>(_tbotInstance.InstanceSettings.Brain.AutoMine, "MaxLunarShipyard", 0)
 				};
 				AutoMinerSettings autoMinerSettings = new() {
 					OptimizeForStart = (bool) _tbotInstance.InstanceSettings.Brain.AutoMine.OptimizeForStart,
@@ -188,7 +174,18 @@ namespace Tbot.Workers.Brain {
 						return;
 					}
 
-					if (celestial is Planet) {
+					var (queueMode, buildQueue) = AutoMineBuildQueueHelper.Resolve(celestial, _tbotInstance.InstanceSettings.Brain.AutoMine, _tbotInstance.UserData.celestials);
+					AutoMineQueueStep? queueStep = queueMode != AutoMineQueueMode.Auto ? AutoMineBuildQueueHelper.GetNextStep(celestial, buildQueue) : null;
+
+					if (queueStep != null) {
+						buildable = queueStep.Value.Buildable;
+						level = _calculationService.GetNextLevel(celestial, buildable, _tbotInstance.UserData.userInfo.Class == CharacterClass.Collector, _tbotInstance.UserData.staff.Engineer, _tbotInstance.UserData.staff.IsFull);
+						DoLog(LogLevel.Debug, $"Bauliste ({queueMode.ToString()}) fuer {celestial.ToString()}: naechster Schritt {buildable.ToString()} (Ziel-Level {queueStep.Value.TargetLevel.ToString()}, baue Level {level.ToString()}).");
+					} else if (queueMode == AutoMineQueueMode.Queue) {
+						DoLog(LogLevel.Information, $"Bauliste fuer {celestial.ToString()} abgeschlossen (Mode=Queue, kein Auto-Fallback konfiguriert).");
+						buildable = Buildables.Null;
+						level = 0;
+					} else if (celestial is Planet) {
 						buildable = _calculationService.GetNextBuildingToBuild(celestial as Planet, _tbotInstance.UserData.researches, maxBuildings, maxFacilities, _tbotInstance.UserData.userInfo.Class, _tbotInstance.UserData.staff, _tbotInstance.UserData.serverData, autoMinerSettings);
 						level = _calculationService.GetNextLevel(celestial as Planet, buildable, _tbotInstance.UserData.userInfo.Class == CharacterClass.Collector, _tbotInstance.UserData.staff.Engineer, _tbotInstance.UserData.staff.IsFull);
 					} else {

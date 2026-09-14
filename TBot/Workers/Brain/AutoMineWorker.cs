@@ -60,31 +60,12 @@ namespace Tbot.Workers.Brain {
 			try {
 				DoLog(LogLevel.Information, "Running automine...");
 
-				Buildings maxBuildings = new() {
-					MetalMine = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxMetalMine,
-					CrystalMine = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxCrystalMine,
-					DeuteriumSynthesizer = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxDeuteriumSynthetizer,
-					SolarPlant = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxSolarPlant,
-					FusionReactor = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxFusionReactor,
-					MetalStorage = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxMetalStorage,
-					CrystalStorage = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxCrystalStorage,
-					DeuteriumTank = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxDeuteriumTank
-				};
-				Facilities maxFacilities = new() {
-					RoboticsFactory = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxRoboticsFactory,
-					Shipyard = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxShipyard,
-					ResearchLab = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxResearchLab,
-					MissileSilo = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxMissileSilo,
-					NaniteFactory = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxNaniteFactory,
-					Terraformer = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxTerraformer,
-					SpaceDock = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxSpaceDock
-				};
 				Facilities maxLunarFacilities = new() {
-					LunarBase = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxLunarBase,
-					RoboticsFactory = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxLunarRoboticsFactory,
-					SensorPhalanx = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxSensorPhalanx,
-					JumpGate = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxJumpGate,
-					Shipyard = (int) _tbotInstance.InstanceSettings.Brain.AutoMine.MaxLunarShipyard
+					LunarBase = SettingsService.GetSetting<int>(_tbotInstance.InstanceSettings.Brain.AutoMine, "MaxLunarBase", 0),
+					RoboticsFactory = SettingsService.GetSetting<int>(_tbotInstance.InstanceSettings.Brain.AutoMine, "MaxLunarRoboticsFactory", 0),
+					SensorPhalanx = SettingsService.GetSetting<int>(_tbotInstance.InstanceSettings.Brain.AutoMine, "MaxSensorPhalanx", 0),
+					JumpGate = SettingsService.GetSetting<int>(_tbotInstance.InstanceSettings.Brain.AutoMine, "MaxJumpGate", 0),
+					Shipyard = SettingsService.GetSetting<int>(_tbotInstance.InstanceSettings.Brain.AutoMine, "MaxLunarShipyard", 0)
 				};
 				AutoMinerSettings autoMinerSettings = new() {
 					OptimizeForStart = (bool) _tbotInstance.InstanceSettings.Brain.AutoMine.OptimizeForStart,
@@ -113,6 +94,11 @@ namespace Tbot.Workers.Brain {
 					cel = await _tbotOgameBridge.UpdatePlanet(cel, UpdateTypes.LFBonuses);
 
 					Planet abaCelestial = await _tbotOgameBridge.UpdatePlanet(cel, UpdateTypes.Fast) as Planet;
+
+					var autoMineRole = AutoMineRoleHelper.GetRole(cel, _tbotInstance.InstanceSettings.Brain.AutoMine, _tbotInstance.UserData.celestials);
+					Buildings maxBuildings = AutoMineRoleHelper.GetMaxBuildings(_tbotInstance.InstanceSettings.Brain.AutoMine, autoMineRole);
+					Facilities maxFacilities = AutoMineRoleHelper.GetMaxFacilities(_tbotInstance.InstanceSettings.Brain.AutoMine, autoMineRole);
+
 					var nextMine = _calculationService.GetNextMineToBuild(cel as Planet, _tbotInstance.UserData.researches, _tbotInstance.UserData.serverData.Speed, maxBuildings.MetalMine, maxBuildings.CrystalMine, maxBuildings.DeuteriumSynthesizer, 1, _tbotInstance.UserData.userInfo.Class, _tbotInstance.UserData.staff.Geologist, _tbotInstance.UserData.staff.IsFull, true, int.MaxValue);
 					if (nextMine != Buildables.Null) {
 						var lv = _calculationService.GetNextLevel(cel, nextMine);
